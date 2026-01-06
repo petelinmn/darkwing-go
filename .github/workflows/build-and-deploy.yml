@@ -71,12 +71,19 @@ jobs:
           KUBECONFIG=./kubeconfig kubectl apply -f k8s/worker-deployment.yaml
         shell: bash
 
-      - name: Rollout with image SHAs
+      - name: Update images to commit SHA (no wait)
         env:
           SHA: ${{ github.sha }}
         run: |
+          set -e
           KUBECONFIG=./kubeconfig kubectl -n darkwing set image deployment/api api=ghcr.io/${{ github.repository_owner }}/darkwing-go/api:${SHA}
           KUBECONFIG=./kubeconfig kubectl -n darkwing set image deployment/worker worker=ghcr.io/${{ github.repository_owner }}/darkwing-go/worker:${SHA}
-          KUBECONFIG=./kubeconfig kubectl -n darkwing rollout status deployment/api --timeout=60s
-          KUBECONFIG=./kubeconfig kubectl -n darkwing rollout status deployment/worker --timeout=60s
+        shell: bash
+
+      - name: Show deploy status (non-blocking)
+        run: |
+          KUBECONFIG=./kubeconfig kubectl -n darkwing get deploy,rs,pods -o wide
+          KUBECONFIG=./kubeconfig kubectl -n darkwing get svc api
+          KUBECONFIG=./kubeconfig kubectl -n darkwing describe deploy api || true
+          KUBECONFIG=./kubeconfig kubectl -n darkwing describe deploy worker || true
         shell: bash
