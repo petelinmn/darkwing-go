@@ -76,8 +76,9 @@ jobs:
           SHA: ${{ github.sha }}
         run: |
           set -e
-          KUBECONFIG=./kubeconfig kubectl -n darkwing set image deployment/api api=ghcr.io/${{ github.repository_owner }}/darkwing-go/api:${SHA}
-          KUBECONFIG=./kubeconfig kubectl -n darkwing set image deployment/worker worker=ghcr.io/${{ github.repository_owner }}/darkwing-go/worker:${SHA}
+          # docker/metadata-action uses 'sha-' prefix for SHA tags
+          KUBECONFIG=./kubeconfig kubectl -n darkwing set image deployment/api api=ghcr.io/${{ github.repository_owner }}/darkwing-go/api:sha-${SHA}
+          KUBECONFIG=./kubeconfig kubectl -n darkwing set image deployment/worker worker=ghcr.io/${{ github.repository_owner }}/darkwing-go/worker:sha-${SHA}
         shell: bash
 
       - name: Show deploy status (non-blocking)
