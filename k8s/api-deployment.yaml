@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: api
+  namespace: darkwing
+  labels:
+    app: darkwing-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: darkwing-api
+  template:
+    metadata:
+      labels:
+        app: darkwing-api
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/petelinmn/darkwing-go/api:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: VERSION
+              value: "v0.1.0"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 2
+            periodSeconds: 5
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"

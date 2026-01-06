@@ -1,0 +1,31 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: worker
+  namespace: darkwing
+  labels:
+    app: darkwing-worker
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: darkwing-worker
+  template:
+    metadata:
+      labels:
+        app: darkwing-worker
+    spec:
+      containers:
+        - name: worker
+          image: ghcr.io/petelinmn/darkwing-go/worker:latest
+          imagePullPolicy: Always
+          env:
+            - name: INTERVAL_SECONDS
+              value: "5"
+          resources:
+            requests:
+              cpu: "50m"
+              memory: "64Mi"
+            limits:
+              cpu: "200m"
+              memory: "128Mi"
