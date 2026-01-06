@@ -32,7 +32,7 @@ func main() {
 		if version == "" {
 			version = "dev"
 		}
-		_ = json.NewEncoder(w).Encode(helloResponse{Message: "hello from api 2", Version: version})
+		_ = json.NewEncoder(w).Encode(helloResponse{Message: "hello from api 3", Version: version})
 	})
 
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
