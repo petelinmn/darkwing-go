@@ -7,13 +7,16 @@ variables:
   DOCKER_HOST: tcp://docker:2375
   DOCKER_DRIVER: overlay2
 
-services:
-  - name: docker:25.0.3-dind
-    command: ["--mtu=1460"]
+############################
+# Scope dind to build jobs #
+############################
 
 build_api:
   stage: build
   image: docker:25.0.3
+  services:
+    - name: docker:25.0.3-dind
+      command: ["--mtu=1460"]
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
   script:
@@ -26,6 +29,9 @@ build_api:
 build_worker:
   stage: build
   image: docker:25.0.3
+  services:
+    - name: docker:25.0.3-dind
+      command: ["--mtu=1460"]
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
   script:
@@ -37,7 +43,7 @@ build_worker:
 
 deploy:
   stage: deploy
-  image: bitnami/kubectl:1.30
+  image: lachlanevenson/k8s-kubectl:v1.30.4
   needs: ["build_api", "build_worker"]
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
