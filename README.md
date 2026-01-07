@@ -59,14 +59,39 @@ kubectl create clusterrolebinding deployer-binding \
 	--serviceaccount kube-system:deployer
 ```
 4. Get the token and build a kubeconfig for the deployer (optional). Alternatively, keep using `k3s.yaml`.
-5. Add a GitHub secret `KUBECONFIG_CONTENT` with the entire kubeconfig file contents.
+5. Add a GitHub secret `KUBECONFIGCONTENT` with the entire kubeconfig file contents.
 
 ## CI/CD: Build & Deploy
 The workflow `.github/workflows/build-and-deploy.yml`:
 - Builds `api` and `worker` images and pushes to GHCR using `GITHUB_TOKEN`.
-- Uses `KUBECONFIG_CONTENT` to apply manifests and roll deployments to the commit SHA.
+- Uses `KUBECONFIGCONTENT` to apply manifests and roll deployments to the commit SHA.
 
 Trigger: push to `main`.
+
+## GitLab CI/CD (Alternative)
+You can also use GitLab to build/push to its Container Registry and deploy to k3s.
+
+1. Create a GitLab project (e.g., `gitlab.com/petelinmn/darkwing-go`) and enable Container Registry.
+2. Ensure the registry allows public pulls (Project Settings → Visibility → Container Registry → Allow public pull access), or add an `imagePullSecret` in k8s.
+3. Add CI variables:
+	- `KUBECONFIGCONTENT`: contents of your updated kubeconfig with `server: https://2.56.127.170:6443`.
+	- (Optional) If using private registry, set up k8s `imagePullSecrets` and reference them in Deployments.
+4. The pipeline in `.gitlab-ci.yml` builds and pushes:
+	- `registry.gitlab.com/<namespace>/<project>/api:{latest,sha-<commit>}`
+	- `registry.gitlab.com/<namespace>/<project>/worker:{latest,sha-<commit>}`
+5. On push to `main`, jobs:
+	- Build `api` and `worker` (Docker-in-Docker) and push two tags: `latest`, `sha-<commit>`.
+	- Deploy: applies manifests and sets Deployment images to `sha-<commit>`.
+
+Manual verify:
+```bash
+kubectl -n darkwing get pods
+curl http://2.56.127.170:30080/health
+```
+
+Notes:
+- If Docker-in-Docker is unavailable on your runner, switch to Kaniko or a shell executor with Docker available.
+- If you prefer GHCR from GitLab CI, set CI variables `REGISTRY=ghcr.io`, `IMAGE_PREFIX=ghcr.io/petelinmn/darkwing-go`, and adapt `.gitlab-ci.yml` to `docker login` with a GitHub PAT (write:packages).
 
 ## Kubernetes Manifests
 Apply manually (optional):
@@ -82,5 +107,5 @@ Access API:
 
 ## Troubleshooting
 - If image pull fails with `Unauthorized`, ensure GHCR packages are Public.
-- If kubectl fails in CI, verify `KUBECONFIG_CONTENT` secret is correct and server IP reachable.
+- If kubectl fails in CI, verify `KUBECONFIGCONTENT` secret is correct and server IP reachable.
 - For Traefik/Ingress, you can add an Ingress later if you prefer hostname routing.

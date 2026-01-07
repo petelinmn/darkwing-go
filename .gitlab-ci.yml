@@ -1,0 +1,52 @@
+stages:
+  - build
+  - deploy
+
+variables:
+  DOCKER_TLS_CERTDIR: "" # Required for docker:dind on GitLab SaaS
+
+services:
+  - name: docker:dind
+    command: ["--mtu=1460"]
+
+build_api:
+  stage: build
+  image: docker:24.0.5
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  script:
+    - docker info
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - docker build -f api/Dockerfile -t "$CI_REGISTRY_IMAGE/api:latest" -t "$CI_REGISTRY_IMAGE/api:sha-$CI_COMMIT_SHA" .
+    - docker push "$CI_REGISTRY_IMAGE/api:latest"
+    - docker push "$CI_REGISTRY_IMAGE/api:sha-$CI_COMMIT_SHA"
+
+build_worker:
+  stage: build
+  image: docker:24.0.5
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  script:
+    - docker info
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
+    - docker build -f worker/Dockerfile -t "$CI_REGISTRY_IMAGE/worker:latest" -t "$CI_REGISTRY_IMAGE/worker:sha-$CI_COMMIT_SHA" .
+    - docker push "$CI_REGISTRY_IMAGE/worker:latest"
+    - docker push "$CI_REGISTRY_IMAGE/worker:sha-$CI_COMMIT_SHA"
+
+deploy:
+  stage: deploy
+  image: bitnami/kubectl:1.30.0
+  needs: ["build_api", "build_worker"]
+  rules:
+    - if: $CI_COMMIT_BRANCH == "main"
+  before_script:
+    - echo "$KUBECONFIGCONTENT" > kubeconfig
+  script:
+    - kubectl --kubeconfig=kubeconfig apply -f k8s/namespace.yaml
+    - kubectl --kubeconfig=kubeconfig apply -f k8s/api-deployment.yaml
+    - kubectl --kubeconfig=kubeconfig apply -f k8s/api-service.yaml
+    - kubectl --kubeconfig=kubeconfig apply -f k8s/worker-deployment.yaml
+    - kubectl --kubeconfig=kubeconfig -n darkwing set image deployment/api api="$CI_REGISTRY_IMAGE/api:sha-$CI_COMMIT_SHA"
+    - kubectl --kubeconfig=kubeconfig -n darkwing set image deployment/worker worker="$CI_REGISTRY_IMAGE/worker:sha-$CI_COMMIT_SHA"
+    - kubectl --kubeconfig=kubeconfig -n darkwing get deploy,rs,pods -o wide
+    - kubectl --kubeconfig=kubeconfig -n darkwing get svc api
