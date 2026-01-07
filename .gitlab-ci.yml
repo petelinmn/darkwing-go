@@ -48,13 +48,20 @@ deploy:
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
   before_script:
-    - echo "$KUBECONFIGCONTENT" > kubeconfig
+    - mkdir -p ~/.kube
+    - |
+      if [ -n "$KUBECONFIG" ]; then
+        cp "$KUBECONFIG" ~/.kube/config
+      else
+        echo "$KUBECONFIGCONTENT" > ~/.kube/config
+      fi
+    - chmod 600 ~/.kube/config
   script:
-    - kubectl --kubeconfig=kubeconfig apply -f k8s/namespace.yaml
-    - kubectl --kubeconfig=kubeconfig apply -f k8s/api-deployment.yaml
-    - kubectl --kubeconfig=kubeconfig apply -f k8s/api-service.yaml
-    - kubectl --kubeconfig=kubeconfig apply -f k8s/worker-deployment.yaml
-    - kubectl --kubeconfig=kubeconfig -n darkwing set image deployment/api api="$CI_REGISTRY_IMAGE/api:sha-$CI_COMMIT_SHA"
-    - kubectl --kubeconfig=kubeconfig -n darkwing set image deployment/worker worker="$CI_REGISTRY_IMAGE/worker:sha-$CI_COMMIT_SHA"
-    - kubectl --kubeconfig=kubeconfig -n darkwing get deploy,rs,pods -o wide
-    - kubectl --kubeconfig=kubeconfig -n darkwing get svc api
+    - kubectl apply -f k8s/namespace.yaml
+    - kubectl apply -f k8s/api-deployment.yaml
+    - kubectl apply -f k8s/api-service.yaml
+    - kubectl apply -f k8s/worker-deployment.yaml
+    - kubectl -n darkwing set image deployment/api api="$CI_REGISTRY_IMAGE/api:sha-$CI_COMMIT_SHA"
+    - kubectl -n darkwing set image deployment/worker worker="$CI_REGISTRY_IMAGE/worker:sha-$CI_COMMIT_SHA"
+    - kubectl -n darkwing get deploy,rs,pods -o wide
+    - kubectl -n darkwing get svc api
