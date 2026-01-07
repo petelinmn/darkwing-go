@@ -24,7 +24,9 @@ build_api:
     - if: $CI_COMMIT_BRANCH == "main"
   script:
     - docker info
-    - printf "%s\n" "$GHCR_TOKEN" | docker login -u petelinmn --password-stdin ghcr.io
+    - |
+      AUTH=$(printf "petelinmn:%s" "$GHCR_TOKEN" | base64 | tr -d '\n')
+      export DOCKER_AUTH_CONFIG="{\"auths\":{\"ghcr.io\":{\"auth\":\"$AUTH\"}}}"
     - docker build -f api/Dockerfile -t "$GHCR_IMAGE_PREFIX/api:latest" -t "$GHCR_IMAGE_PREFIX/api:sha-$CI_COMMIT_SHA" .
     - docker push "$GHCR_IMAGE_PREFIX/api:latest"
     - docker push "$GHCR_IMAGE_PREFIX/api:sha-$CI_COMMIT_SHA"
@@ -39,7 +41,9 @@ build_worker:
     - if: $CI_COMMIT_BRANCH == "main"
   script:
     - docker info
-    - printf "%s\n" "$GHCR_TOKEN" | docker login -u petelinmn --password-stdin ghcr.io
+    - |
+      AUTH=$(printf "petelinmn:%s" "$GHCR_TOKEN" | base64 | tr -d '\n')
+      export DOCKER_AUTH_CONFIG="{\"auths\":{\"ghcr.io\":{\"auth\":\"$AUTH\"}}}"
     - docker build -f worker/Dockerfile -t "$GHCR_IMAGE_PREFIX/worker:latest" -t "$GHCR_IMAGE_PREFIX/worker:sha-$CI_COMMIT_SHA" .
     - docker push "$GHCR_IMAGE_PREFIX/worker:latest"
     - docker push "$GHCR_IMAGE_PREFIX/worker:sha-$CI_COMMIT_SHA"
