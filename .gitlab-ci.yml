@@ -37,7 +37,7 @@ build_worker:
 
 deploy:
   stage: deploy
-  image: bitnami/kubectl:1.30.0
+  image: bitnami/kubectl:1.30
   needs: ["build_api", "build_worker"]
   rules:
     - if: $CI_COMMIT_BRANCH == "main"
