@@ -6,6 +6,9 @@ variables:
   DOCKER_TLS_CERTDIR: "" # Required for docker:dind on GitLab SaaS
   DOCKER_HOST: tcp://docker:2375
   DOCKER_DRIVER: overlay2
+  # Push to GHCR (GitHub Container Registry) to match k8s manifests
+  GHCR_REGISTRY: ghcr.io
+  GHCR_IMAGE_PREFIX: ghcr.io/petelinmn/darkwing-go
 
 ############################
 # Scope dind to build jobs #
@@ -21,10 +24,10 @@ build_api:
     - if: $CI_COMMIT_BRANCH == "main"
   script:
     - docker info
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
-    - docker build -f api/Dockerfile -t "$CI_REGISTRY_IMAGE/api:latest" -t "$CI_REGISTRY_IMAGE/api:sha-$CI_COMMIT_SHA" .
-    - docker push "$CI_REGISTRY_IMAGE/api:latest"
-    - docker push "$CI_REGISTRY_IMAGE/api:sha-$CI_COMMIT_SHA"
+    - echo "$GHCR_TOKEN" | docker login -u petelinmn --password-stdin ghcr.io
+    - docker build -f api/Dockerfile -t "$GHCR_IMAGE_PREFIX/api:latest" -t "$GHCR_IMAGE_PREFIX/api:sha-$CI_COMMIT_SHA" .
+    - docker push "$GHCR_IMAGE_PREFIX/api:latest"
+    - docker push "$GHCR_IMAGE_PREFIX/api:sha-$CI_COMMIT_SHA"
 
 build_worker:
   stage: build
@@ -36,10 +39,10 @@ build_worker:
     - if: $CI_COMMIT_BRANCH == "main"
   script:
     - docker info
-    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin "$CI_REGISTRY"
-    - docker build -f worker/Dockerfile -t "$CI_REGISTRY_IMAGE/worker:latest" -t "$CI_REGISTRY_IMAGE/worker:sha-$CI_COMMIT_SHA" .
-    - docker push "$CI_REGISTRY_IMAGE/worker:latest"
-    - docker push "$CI_REGISTRY_IMAGE/worker:sha-$CI_COMMIT_SHA"
+    - echo "$GHCR_TOKEN" | docker login -u petelinmn --password-stdin ghcr.io
+    - docker build -f worker/Dockerfile -t "$GHCR_IMAGE_PREFIX/worker:latest" -t "$GHCR_IMAGE_PREFIX/worker:sha-$CI_COMMIT_SHA" .
+    - docker push "$GHCR_IMAGE_PREFIX/worker:latest"
+    - docker push "$GHCR_IMAGE_PREFIX/worker:sha-$CI_COMMIT_SHA"
 
 deploy:
   stage: deploy
@@ -61,7 +64,7 @@ deploy:
     - kubectl apply -f k8s/api-deployment.yaml
     - kubectl apply -f k8s/api-service.yaml
     - kubectl apply -f k8s/worker-deployment.yaml
-    - kubectl -n darkwing set image deployment/api api="$CI_REGISTRY_IMAGE/api:sha-$CI_COMMIT_SHA"
-    - kubectl -n darkwing set image deployment/worker worker="$CI_REGISTRY_IMAGE/worker:sha-$CI_COMMIT_SHA"
+    - kubectl -n darkwing set image deployment/api api="$GHCR_IMAGE_PREFIX/api:sha-$CI_COMMIT_SHA"
+    - kubectl -n darkwing set image deployment/worker worker="$GHCR_IMAGE_PREFIX/worker:sha-$CI_COMMIT_SHA"
     - kubectl -n darkwing get deploy,rs,pods -o wide
     - kubectl -n darkwing get svc api
