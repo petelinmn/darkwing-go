@@ -58,6 +58,66 @@ INTERVAL_SECONDS=2
 
 Then run `docker compose up -d`.
 
+## Run Local Kubernetes (Docker Desktop)
+Prereqs: Docker Desktop with Kubernetes enabled, `kubectl` on PATH.
+
+```powershell
+# Ensure Docker Desktop Kubernetes is active
+kubectl config current-context
+kubectl get nodes
+
+# Optional: pre-pull public images from GHCR for faster startup
+docker pull ghcr.io/petelinmn/darkwing-go/api:latest
+docker pull ghcr.io/petelinmn/darkwing-go/worker:latest
+
+# Create namespace and apply manifests
+kubectl apply -f k8s/namespace.yaml
+kubectl -n darkwing apply -f k8s/api-deployment.yaml
+kubectl -n darkwing apply -f k8s/api-service.yaml
+kubectl -n darkwing apply -f k8s/worker-deployment.yaml
+
+# Verify resources
+kubectl -n darkwing get pods,svc,deploy
+kubectl -n darkwing rollout status deploy/api
+kubectl -n darkwing rollout status deploy/worker
+
+# Access the API via NodePort on your local machine
+# If you have curl installed:
+curl http://localhost:30080/health
+curl http://localhost:30080/hello
+
+# If curl is not available, use PowerShell:
+Invoke-RestMethod -Uri "http://localhost:30080/health" | ConvertTo-Json -Depth 3
+Invoke-RestMethod -Uri "http://localhost:30080/hello" | ConvertTo-Json -Depth 3
+
+# Alternative: port-forward service to local 8080
+kubectl -n darkwing port-forward svc/api 8080:80
+# Then visit http://localhost:8080/health
+```
+
+Cleanup:
+```powershell
+kubectl delete namespace darkwing
+# Or delete selectively:
+kubectl -n darkwing delete deploy/api deploy/worker svc/api
+```
+
+## Stop Local Kubernetes (Docker Desktop)
+- Disable Kubernetes: Docker Desktop → Settings → Kubernetes → uncheck "Enable Kubernetes".
+- Reset cluster (wipe all k8s state): Docker Desktop → Settings → Kubernetes → "Reset Kubernetes cluster".
+- Stop workloads only: delete this project’s resources
+```powershell
+kubectl delete namespace darkwing
+# Or selectively:
+kubectl -n darkwing delete deploy/api deploy/worker svc/api
+```
+- Stop port-forward: if you used `kubectl port-forward`, press Ctrl+C in that terminal.
+- Switch away from Docker Desktop context (optional):
+```powershell
+kubectl config get-contexts
+kubectl config use-context <your-other-context>
+```
+
 ## Repository Setup
 1. Create the public repo `petelinmn/darkwing-go` on GitHub.
 2. In this folder, initialize and push:
