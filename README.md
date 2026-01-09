@@ -25,6 +25,39 @@ curl http://localhost:8080/health
 curl http://localhost:8080/hello
 ```
 
+## Run with Docker Compose
+Build and start both API and worker locally:
+
+```powershell
+docker compose up --build -d
+# Tail logs
+docker compose logs -f
+```
+
+API will be available at:
+
+```powershell
+curl http://localhost:8080/health
+curl http://localhost:8080/hello
+```
+
+Environment overrides (Windows PowerShell examples):
+
+```powershell
+$env:VERSION = "local-dev"
+$env:INTERVAL_SECONDS = "2"
+docker compose up --build -d
+```
+
+Or create a `.env` file next to `docker-compose.yml`:
+
+```
+VERSION=local-dev
+INTERVAL_SECONDS=2
+```
+
+Then run `docker compose up -d`.
+
 ## Repository Setup
 1. Create the public repo `petelinmn/darkwing-go` on GitHub.
 2. In this folder, initialize and push:
