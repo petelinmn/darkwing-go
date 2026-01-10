@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -24,6 +25,30 @@ func main() {
 	mux.HandleFunc("/health", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		_ = json.NewEncoder(w).Encode(healthResponse{Status: "ok", Time: time.Now().UTC().Format(time.RFC3339)})
+	})
+
+	mux.HandleFunc("/sum", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+
+		a := r.URL.Query().Get("a")
+		b := r.URL.Query().Get("b")
+
+		var numA, numB float64
+		if a != "" {
+			if _, err := fmt.Sscanf(a, "%f", &numA); err != nil {
+				http.Error(w, `{"error":"invalid parameter a"}`, http.StatusBadRequest)
+				return
+			}
+		}
+		if b != "" {
+			if _, err := fmt.Sscanf(b, "%f", &numB); err != nil {
+				http.Error(w, `{"error":"invalid parameter b"}`, http.StatusBadRequest)
+				return
+			}
+		}
+
+		sum := numA + numB
+		_ = json.NewEncoder(w).Encode(map[string]float64{"sum": sum})
 	})
 
 	mux.HandleFunc("/hello", func(w http.ResponseWriter, r *http.Request) {
